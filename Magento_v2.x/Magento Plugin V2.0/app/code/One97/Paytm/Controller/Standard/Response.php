@@ -52,7 +52,7 @@ class Response extends \One97\Paytm\Controller\Paytm
 					$returnUrl = $this->getPaytmHelper()->getUrl('checkout/onepage/failure');
 				}
 			}else{
-				if($resCode == "141" || $resCode == "8102" || $resCode == "8103" || $resCode == "14112" ){
+				if($resCode == "141" || $resCode == "142" || $resCode == "8102" || $resCode == "8103" || $resCode == "14112"){
 					$errorMsg = 'Paytm Transaction Failed ! Transaction was cancelled.';
 					$comment .=  "Payment cancelled by user";
 					$order->setStatus($order::STATE_CANCELED);
