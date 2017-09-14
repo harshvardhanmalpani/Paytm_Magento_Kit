@@ -52,8 +52,15 @@ class Response extends \One97\Paytm\Controller\Paytm
 					$returnUrl = $this->getPaytmHelper()->getUrl('checkout/onepage/failure');
 				}
 			}else{
-				if($resCode == "141" || $resCode == "8102" || $resCode == "8103" || $resCode == "14112"){
+				if($resCode == "141" || $resCode == "8102" || $resCode == "8103" || $resCode == "14112" ){
 					$errorMsg = 'Paytm Transaction Failed ! Transaction was cancelled.';
+					$comment .=  "Payment cancelled by user";
+					$order->setStatus($order::STATE_CANCELED);
+					$this->_cancelPayment("Payment cancelled by user");
+					//$order->save();
+					$returnUrl = $this->getPaytmHelper()->getUrl('checkout/cart');
+				}elseif($resCode == "14113"){
+					$errorMsg = 'Paytm Transaction Failed ! Insufficient wallet balance';
 					$comment .=  "Payment cancelled by user";
 					$order->setStatus($order::STATE_CANCELED);
 					$this->_cancelPayment("Payment cancelled by user");
@@ -71,14 +78,14 @@ class Response extends \One97\Paytm\Controller\Paytm
         else
         {
 			$errorMsg = 'Paytm Transaction Failed ! Fraud has been detected';
-			$comment .=  "Fraud Detucted";
+			$comment .=  "Fraud Detected";
             $order->setStatus($order::STATUS_FRAUD);
             $returnUrl = $this->getPaytmHelper()->getUrl('checkout/onepage/failure');
         }
 		$this->addOrderHistory($order,$comment);
         $order->save();
 		if($successFlag){
-			$this->messageManager->addSuccess( __('Paytm transaction has been successful.') );
+			$this->messageManager->addSuccess( __('Paytm transaction was successful.') );
 		}else{
 			$this->messageManager->addError( __($errorMsg) );
 		}
