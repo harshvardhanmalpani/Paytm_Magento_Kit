@@ -46,8 +46,8 @@ class Response extends \One97\Paytm\Controller\Paytm
 					$returnUrl = $this->getPaytmHelper()->getUrl('checkout/onepage/success');
 				}
 				else{
-					$errorMsg = 'It seems some issue in server to server communication. Kindly connect with administrator.';
-					$comment .=  "Fraud Detucted";
+					$errorMsg = 'It seems some issue in server communication. Kindly connect with administrator.';
+					$comment .=  "Fraud Detected";
 					$order->setStatus($order::STATUS_FRAUD);
 					$returnUrl = $this->getPaytmHelper()->getUrl('checkout/onepage/failure');
 				}
@@ -70,8 +70,8 @@ class Response extends \One97\Paytm\Controller\Paytm
         }
         else
         {
-			$errorMsg = 'Paytm Transaction Failed ! Fraud has been detected';
-			$comment .=  "Fraud Detucted";
+			$errorMsg = 'Paytm Transaction Failed! Fraud has been detected.';
+			$comment .=  "Fraud Detected";
             $order->setStatus($order::STATUS_FRAUD);
             $returnUrl = $this->getPaytmHelper()->getUrl('checkout/onepage/failure');
         }
