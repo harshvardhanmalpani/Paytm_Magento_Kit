@@ -17,6 +17,7 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
     protected $_formBlockType = 'One97\Paytm\Block\Form\Paytm';
     protected $_infoBlockType = 'One97\Paytm\Block\Info\Paytm';
     protected $urlBuilder;
+    protected $_isInitializeNeeded = true;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -64,7 +65,24 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
         }
         return true;
     }
-
+	
+	/**
+     * Instantiate state and set it to state object.
+     *
+     * @param string                        $paymentAction
+     * @param \Magento\Framework\DataObject $stateObject
+     */
+    public function initialize($paymentAction, $stateObject)
+    {
+        $payment = $this->getInfoInstance();
+        $order = $payment->getOrder();
+        $order->setCanSendNewEmailFlag(false);		
+		
+        $stateObject->setState(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT);
+        $stateObject->setStatus('pending_payment');
+        $stateObject->setIsNotified(false);
+    }
+	
     public function buildPaytmRequest($order)
     {
         $params = array('MID' => $this->getConfigData("MID"),  				

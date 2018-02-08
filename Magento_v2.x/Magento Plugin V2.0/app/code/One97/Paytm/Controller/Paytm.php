@@ -10,6 +10,16 @@ abstract class Paytm extends \Magento\Framework\App\Action\Action
     protected $_checkoutSession;
 
     /**
+    * @var \Magento\Sales\Model\Order
+    */
+    protected $_order;
+	
+    /**
+    * @var Magento\Sales\Model\Order\Email\Sender\OrderSender
+    */
+    protected $_orderSender;
+
+    /**
      * @var \Magento\Sales\Model\OrderFactory
      */
     protected $_orderFactory;
@@ -53,6 +63,7 @@ abstract class Paytm extends \Magento\Framework\App\Action\Action
 		\Magento\Sales\Model\Order\Status\HistoryFactory $orderHistoryFactory,
         \One97\Paytm\Model\Paytm $paytmModel,
         \One97\Paytm\Helper\Data $paytmHelper,
+		\Magento\Sales\Model\Order\Email\Sender\OrderSender $orderSender,
         \Psr\Log\LoggerInterface $logger
     ) {
         $this->_customerSession = $customerSession;
@@ -60,6 +71,7 @@ abstract class Paytm extends \Magento\Framework\App\Action\Action
         $this->_orderFactory = $orderFactory;
         $this->_logger = $logger;
 		$this->_orderHistoryFactory = $orderHistoryFactory;
+        $this->_orderSender = $orderSender;		
         $this->_paytmModel = $paytmModel;
         $this->_paytmHelper = $paytmHelper;		
         parent::__construct($context);

@@ -78,7 +78,13 @@ class Response extends \One97\Paytm\Controller\Paytm
 		$this->addOrderHistory($order,$comment);
         $order->save();
 		if($successFlag){
-			$this->messageManager->addSuccess( __('Paytm transaction has been successful.') );
+			$this->messageManager->addSuccess( __('Your transaction was successful. Thank you for your order!') );
+        if (!$order->getEmailSent()) {
+            $this->_orderSender->send($order);
+            $order->setIsCustomerNotified(
+                true
+            )->save();
+        }
 		}else{
 			$this->messageManager->addError( __($errorMsg) );
 		}
