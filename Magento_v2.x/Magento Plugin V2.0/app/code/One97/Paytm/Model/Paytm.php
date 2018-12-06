@@ -8,6 +8,7 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
 {
     const CODE = 'paytm';
     protected $_code = self::CODE;
+    protected $_isInitializeNeeded = true;
     protected $_isGateway = true;
     protected $_isOffline = true;
     protected $helper;
@@ -17,7 +18,6 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
     protected $_formBlockType = 'One97\Paytm\Block\Form\Paytm';
     protected $_infoBlockType = 'One97\Paytm\Block\Info\Paytm';
     protected $urlBuilder;
-    protected $_isInitializeNeeded = true;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -46,6 +46,23 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
         $this->urlBuilder = $urlBuilder;
     }
 
+    /**
+     * Instantiate state and set it to state object.
+     *
+     * @param string                        $paymentAction
+     * @param \Magento\Framework\DataObject $stateObject
+     */
+    public function initialize($paymentAction, $stateObject)
+    {
+        $payment = $this->getInfoInstance();
+        $order = $payment->getOrder();
+        $order->setCanSendNewEmailFlag(false);      
+    
+        $stateObject->setState(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT);
+        $stateObject->setStatus('pending_payment');
+        $stateObject->setIsNotified(false);
+    }
+
     public function isAvailable(\Magento\Quote\Api\Data\CartInterface $quote = null)
     {
         if ($quote && (
@@ -65,49 +82,35 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
         }
         return true;
     }
-	
-	/**
-     * Instantiate state and set it to state object.
-     *
-     * @param string                        $paymentAction
-     * @param \Magento\Framework\DataObject $stateObject
-     */
-    public function initialize($paymentAction, $stateObject)
-    {
-        $payment = $this->getInfoInstance();
-        $order = $payment->getOrder();
-        $order->setCanSendNewEmailFlag(false);		
-		
-        $stateObject->setState(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT);
-        $stateObject->setStatus('pending_payment');
-        $stateObject->setIsNotified(false);
-    }
-	
+
     public function buildPaytmRequest($order)
     {
-        $params = array('MID' => $this->getConfigData("MID"),  				
+        $callBackUrl=$this->urlBuilder->getUrl('paytm/Standard/Response', ['_secure' => true]);
+        if($this->getConfigData("custom_callbackurl")=='1'){
+            $callBackUrl=$this->getConfigData("callback_url")!=''?$this->getConfigData("callback_url"):$callBackUrl;
+        }
+        $params = array('MID' => $this->getConfigData("MID"),               
                         'TXN_AMOUNT' => round($order->getGrandTotal(), 2),
                         'CHANNEL_ID' => $this->getConfigData("Channel_Id"),
                         'INDUSTRY_TYPE_ID' => $this->getConfigData("Industry_id"),
                         'WEBSITE' => $this->getConfigData("Website"),
                         'CUST_ID' => $order->getCustomerEmail(),
-                        'ORDER_ID' => $order->getRealOrderId(),   				    
+                        'ORDER_ID' => $order->getRealOrderId(),                     
                         'EMAIL' => $order->getCustomerEmail(),
-                        'CALLBACK_URL' => $this->urlBuilder->getUrl('paytm/Standard/Response', ['_secure' => true]));    
+                        'CALLBACK_URL' => $callBackUrl);    
+        if(isset($order->paytmPromoCode)){
+            $params['PROMO_CAMP_ID']=$order->paytmPromoCode;
+        }
         
         $checksum = $this->helper->getChecksumFromArray($params, $this->getConfigData("merchant_key"));
         
         $params['CHECKSUMHASH'] = str_replace("+","%2b",$checksum);
-		
-        if($this->getConfigData('debug')){
-            $url = $this->helper->PAYTM_PAYMENT_URL_TEST."?";
-        }else{
-            $url = $this->helper->PAYTM_PAYMENT_URL_PROD."?";
-        }
+        
+        $url = $this->getConfigData('transaction_url')."?";
         $urlparam = "";
-		foreach($params as $key => $val){
-			$urlparam = $urlparam.$key."=".$val."&";
-		}
+        foreach($params as $key => $val){
+            $urlparam = $urlparam.$key."=".$val."&";
+        }
         $url = $url . $urlparam;
         return $url;
     }
@@ -123,40 +126,34 @@ class Paytm extends \Magento\Payment\Model\Method\AbstractMethod
         }
         return $result;
     }
-	
+    
     public function generateStatusChecksum($requestParamList)
     {
         $result = $this->helper->getChecksumFromArray($requestParamList,$this->getConfigData("merchant_key"));            
         return $result;
     }
 
+    public function autoInvoiceGen()
+    {
+        $result = $this->getConfigData("payment_action");            
+        return $result;
+    }
+
     public function getRedirectUrl()
     {
-        if($this->getConfigData('debug')){
-            $url = $this->helper->PAYTM_PAYMENT_URL_TEST;
-        }else{
-            $url = $this->helper->PAYTM_PAYMENT_URL_PROD;
-        }
+        $url = $this->getConfigData('transaction_url');
         return $url;
     }
     
     public function getStatusQueryUrl()
     {
-        if($this->getConfigData('debug')){
-            $url = $this->helper->STATUS_QUERY_URL_TEST;
-        }else{
-            $url = $this->helper->STATUS_QUERY_URL_PROD;
-        }
+        $url = $this->getConfigData('transaction_status_url');
         return $url;
     }
-	
+    
     public function getNewStatusQueryUrl()
     {
-        if($this->getConfigData('debug')){
-            $url = $this->helper->NEW_STATUS_QUERY_URL_TEST;
-        }else{
-            $url = $this->helper->NEW_STATUS_QUERY_URL_PROD;
-        }
+        $url = $this->getConfigData('transaction_status_url');
         return $url;
     }
 

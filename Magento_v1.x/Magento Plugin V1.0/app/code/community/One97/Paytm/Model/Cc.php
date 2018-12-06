@@ -56,10 +56,9 @@ class One97_paytm_Model_Cc extends Mage_Payment_Model_Method_Abstract
 
     public function getUrl()
     {
-    		if(Mage::getStoreConfig('payment/paytm_cc/mode')==1)
-			$this->_liveUrl = Mage::helper('paytm/Data2')->PAYTM_PAYMENT_URL_PROD;
-			else
-			$this->_liveUrl = Mage::helper('paytm/Data2')->PAYTM_PAYMENT_URL_TEST;
+    		$transaction_url = Mage::getStoreConfig('payment/paytm_cc/transaction_url');
+			$const = (string)Mage::getConfig()->getNode('global/crypt/key');
+			$this->_liveUrl= Mage::helper('paytm')->decrypt_e($transaction_url,$const);
 			return $this->_liveUrl;
     }
 
@@ -85,7 +84,7 @@ class One97_paytm_Model_Cc extends Mage_Payment_Model_Method_Abstract
 		$merid = Mage::helper('paytm')->decrypt_e($this->getConfigData('inst_id'),$const);
 		$website = $this->getConfigData('website');
 		$industry_type = $this->getConfigData('industrytype');
-		$is_callback = $this->getConfigData('callbackUrl');
+		$is_callback = $this->getConfigData('custom_callbackurl');
 		$callbackUrl = rtrim(Mage::getUrl('paytm/processing/response',array('_nosid'=>true)),'/');
 		$lastOrderId = Mage::getSingleton('checkout/session')->getLastOrderId();
 		$order = Mage::getSingleton('sales/order');
@@ -95,27 +94,35 @@ class One97_paytm_Model_Cc extends Mage_Payment_Model_Method_Abstract
 		$telephone = $order->getBillingAddress()->getTelephone();
 		//create array using which checksum is calculated
 		
-    	$params = 	array(
-	    			'MID' =>	$merid,  				
-	    			'TXN_AMOUNT' =>	$price,
-    				'CHANNEL_ID' => "WEB",
-						'INDUSTRY_TYPE_ID' => $industry_type,
-						'WEBSITE' => $website,
-						'CUST_ID' => Mage::getSingleton('customer/session')->getCustomer()->getId(),
-						'ORDER_ID'	=>	$this->getOrder()->getRealOrderId(),   				    
-						'EMAIL'=> $email,
-						'MOBILE_NO' => preg_replace('#[^0-9]{0,13}#is','',$telephone)
-                                                
-					);
-                                        if($is_callback){
-                                            $params['CALLBACK_URL'] = $callbackUrl;
-                                        }
+		$params = 	array(
+			'MID' =>	$merid,  				
+			'TXN_AMOUNT' =>	$price,
+			'CHANNEL_ID' => "WEB",
+			'INDUSTRY_TYPE_ID' => $industry_type,
+			'WEBSITE' => $website,
+			'CUST_ID' => Mage::getSingleton('customer/session')->getCustomer()->getId(),
+			'ORDER_ID'	=>	$this->getOrder()->getRealOrderId(),   				    
+			'EMAIL'=> $email,
+			'MOBILE_NO' => preg_replace('#[^0-9]{0,13}#is','',$telephone)
+		);
+		if($is_callback=='1'){
+			$callbackUrl=$this->getConfigData('callback_url')!=''?$this->getConfigData('callback_url'):$callbackUrl;
+		}
+		$params['CALLBACK_URL'] = $callbackUrl;
 					
-					//generate customer id in case this is a guest checkout
-                                if(empty($params['CUST_ID'])){
-                                        $params['CUST_ID'] = $email;
-                                }
+		//generate customer id in case this is a guest checkout
+		if(empty($params['CUST_ID'])){
+			$params['CUST_ID'] = $email;
+		}
 				
+		if(Mage::getSingleton('core/session')->getPROMO_CAMP_ID()){
+			$params['PROMO_CAMP_ID'] = Mage::getSingleton('core/session')->getPROMO_CAMP_ID();
+
+			// unset Promo Code form session
+			Mage::getSingleton('core/session')->unsPROMO_CAMP_ID();
+		}
+
+
 			$checksum = Mage::helper('paytm')->getChecksumFromArray($params, $mer);//generate checksum
 			$params['CHECKSUMHASH'] = $checksum;
 		  return $params;
